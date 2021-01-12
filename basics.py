@@ -1,5 +1,6 @@
 """
-File containing generally useful physical constants in SI Units
+File containing physical constants in SI Units (for conversion between CGS and SI) and useful
+equations for dealing with gaussian beams
 """
 import numpy as np
 from numpy import pi
@@ -18,9 +19,29 @@ ao = 0.52917721067e-10  # bohr radius; m
 mu = 1/(c**2*eps)  # Vacuum Permeability; N/A^2
 mub = 927.4009994e-26  # Bohr Magneton; J/T
 Eh = 4.359744650e-18  # Hartree; J
+kb = 1.38064852e-23  # Boltzmann Constant; J/K
 
 
-# nearly ubiquitously useful functions
+# useful functions for electromagnetic waves
+def k_mag(omega: float) -> float:
+    """
+    Returns the magnitude of the k-vector an electromagnetic wave travelling in vacuum with an
+        angular frequency of omega
+    Args:
+        omega : angular frequency of the travelling wave. Use Hz if in SI
+
+    Returns:
+        Magnitude of the k-vector an electromagnetic wave travelling in vacuum with an
+        angular frequency of omega. In SI (1/m)
+    """
+    return omega / c
+
+
+def freq(wavelength: float) -> float:
+    return c / wavelength
+
+
+# nearly ubiquitously useful functions for gaussian beams
 def intensity(power: float, width: float) -> float:
     """
     Intensity of a gaussian beam
