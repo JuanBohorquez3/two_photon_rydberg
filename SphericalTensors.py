@@ -1,6 +1,7 @@
 import numpy as np
 from typing import List
 
+
 class SphericalVector:
     """
     Class to track the weights of polarization for an vector in cartesian space, describing it in

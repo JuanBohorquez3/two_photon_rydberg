@@ -17,9 +17,14 @@ eps = 8.854187e-12  # Vacuum Permittivity; F/m
 ke = 1./(4*pi*eps)  # Coulomb constant; m/F
 ao = 0.52917721067e-10  # bohr radius; m
 mu = 1/(c**2*eps)  # Vacuum Permeability; N/A^2
-mub = 927.4009994e-26  # Bohr Magneton; J/T
+mub = 9.274009994e-24  # Bohr Magneton; J/T
 Eh = 4.359744650e-18  # Hartree; J
 kb = 1.38064852e-23  # Boltzmann Constant; J/K
+
+
+# Non-SI unit conversions
+# Format: non-SI unit = value in SI unit  # description of conversion; unit of SI equivalent
+gauss = 1.0e-4  # gauss to Tesla; T
 
 
 # useful functions for electromagnetic waves

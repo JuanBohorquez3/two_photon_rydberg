@@ -96,7 +96,7 @@ def quadrupole_rme_hf(
     dipole matrix element between those levels in the fine structure basis
     Args:
         q_fs : reduced quadrupole matrix element between the fine structure levels j and jp (Cm**2)
-            <ap, jp|| ?? ||a, j>
+            <ap, jp|| e C_2/sqrt(15) ||a, j>
         j : fine structure angular momentum quantum number for the initial state. Should be
             integer or half-integer
         f : hyperfine structure angular momentum quantum number for the initial state. Should be
@@ -131,7 +131,7 @@ def quadrupole_rme_fs(
         the reduced matrix element between those levels in the orbital basis.
     Args:
         q_l : reduced matrix element between orbital levels li, and lp (Cm**2)
-            <ap, lp || ??? ||a, li>
+            <ap, lp || e C_2/sqrt(15) ||a, li>
         li : orbital angular momentum quantum number for the initial state. Should be integer or
             half-integer
         j : fine structure angular momentum quantum number for the initial state. Should be
@@ -152,9 +152,9 @@ def quadrupole_rme_fs(
 
 
 def dipole_rabi_frequency(
-        electric_field: float,
+        electric_field: complex,
         q: SphericalVector,
-        d: complex,
+        d_rme: complex,
         j: moment,
         m: moment,
         jp: moment,
@@ -182,7 +182,7 @@ def dipole_rabi_frequency(
         electric_field : electric field amplitude of the oscillating field coupling two states (V/m)
         q : length three list describing the relative polarization of the oscillating field in the
             spherical basis Components should be indexed [e_0, e_+1, e_-1].
-        d : reduced dipole matrix element between the states (Cm)
+        d_rme : reduced dipole matrix element between the states (Cm)
         j : angular momentum quantum number for initial state. Int or half-int.
         m : zeeman state quantum number for initial state. Int or half-int.
         jp : angular momentum quantum number for primed state. Int or half-int.
@@ -192,20 +192,21 @@ def dipole_rabi_frequency(
         rabi frequency coupling |a,j,m> and |ap,jp,mp> in Hz (assuming values passed in were in
             correct units)
     """
-    q_a = m-mp  # dipole allowed field polarization
+    q_a = mp-m  # dipole allowed field polarization
     if abs(q_a) > 1:  # dipole only allows change of 1
         return 0
 
     # proportion of field in that polarization state
     c_a = q[int(q_a)]
-
+    # print(f"m-mp:{q_a},polarization_array:{q},c_a:{c_a}")
     return N(
-        electric_field / hb * c_a * clebsch_gordan(1, jp, j, q_a, mp, m) * d / np.sqrt(2 * jp + 1)
+        electric_field / hb * c_a * clebsch_gordan(1, j, jp, q_a, m, mp) * d_rme / np.sqrt(2 * jp
+                                                                                          + 1)
     )
 
 
 def quadrupole_rabi_frequency(
-        electric_field: float,
+        electric_field: complex,
         frequency: float,
         q_ar: SphericalVector,
         k_ar: SphericalVector,
@@ -250,5 +251,66 @@ def quadrupole_rabi_frequency(
     # print(f"f = {frequency*1e-12}THz")
     # print(f"k = {k_mag(frequency*2*pi)}m^-1")
 
-    m_sum = sum([m_q(q_ar, k_ar, q)*clebsch_gordan(jp, 2, j, mp, q, m) for q in range(-2, 3)])
-    return N(pre * m_sum)
+    m_sum = sum([m_q(q_ar, k_ar, q)*clebsch_gordan(2, j, jp, q, m, mp) for q in range(-2, 3)])
+    return complex(N(pre * m_sum))
+
+
+def dipole_hf_to_fs(
+        electric_field: complex,
+        q_ar: SphericalVector,
+        d_rme: complex,
+        j: moment,
+        f: moment,
+        mf: moment,
+        jp: moment,
+        mp: moment,
+        i: moment
+) -> complex:
+    """
+    Computes rabi frequency for a dipole transition between two zeeman states, the lower
+    (un-primed) state being defined in the hyperfine basis and the upper (primed) state being
+    defined in the fine structure basis.
+
+    This computation is particularly useful in the case of exciting to Rydberg states, where the
+    strength hyperfine interactions become much smaller than the linewidths of the fine structure
+    levels.
+
+    The states in this function are described as |a, f, mf> -> |ap, jp, mp> where p represents
+    primed states, and a/ap abstract away all unaccounted-for quantum numbers.
+    Args:
+        electric_field : electric field strength of the oscillating field coupling the two states
+        q_ar : SphericalVector object describing the field polarization
+        d_rme : reduced dipole matrix element between the two FINE-STRUCTURE levels
+        j : fine structure angular momentum quantum number for the initial state. Should be
+            integer or half-integer
+        f : hyperfine structure angular momentum quantum number for the initial state. Should be
+            integer or half-integer
+        mf : zeeman state quantum number (in the hyperfine basis) for the initial state. Should be
+            integer or half-integer
+        jp : fine structure angular momentum quantum number for the final state. Should be
+            integer of half-integer
+        mp : zeeman state quantum number (in the fine structure basis) for the final state.
+            Should be integer or half-integer
+        i : nuclear spin quantum number. Should be integer or half-integer
+
+    Returns:
+        rabi frequency coupling |a,I,j,f,mf> to |ap,j,mj;I>
+    """
+
+    s = 0
+    for q in [-1, 0, 1]:
+        #print(q, q_ar[q])
+        for fp in np.arange(abs(i-jp), i+jp+1):
+            mfp = q+mf
+            if abs(mfp) > fp:
+                # print(f"q = {q} mf = {mf}, fp = {fp} mfp = {mfp}")
+                s += 0
+                continue
+            c1 = clebsch_gordan(jp, i, fp, mp, mfp-mp, mfp)
+            c2 = clebsch_gordan(1, f, fp, q, mf, mfp)
+            six = wigner_6j(j, i, f, fp, 1, jp)
+            cont = c1 * c2 * six * q_ar[q] * (-1) ** (1 + i + jp + fp)
+            # if(q_ar[q] != 0):
+                # print(f"fr = {fp} mfr = {mfp} c1 = {c1} c2 = {c2}")
+            s += cont
+    return complex(N(electric_field * s * np.sqrt(2 * f + 1) * d_rme / hb))
