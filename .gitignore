@@ -144,3 +144,6 @@ static
 
 # pycharm
 .idea/
+/testing.ipynb
+
+*.png
