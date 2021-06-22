@@ -18,6 +18,49 @@ gs = 2 + 2.31930443622e-3  # Corrected electron spin g-factor
 
 cs_clock = 9.192631770e9  # Cesium clock frequency (Hz)
 
+# Line-widths of relevant transitions in Cesium
+gamma_5D = 1/1280e-9  # for |5D5/2> levels
+# -- Computing lifetime for rydberg atoms in |nP3/2> states  --
+Ts_p_3o2 = 3.2849  # From Entin 2009
+delta_p_3o2 = 2.9875  # From Entin 2009
+A_t, B_t, C_t, D_t = [0.038, 0.056, 1.552, 3.505]  # From Entin 2009
+def ryd_lifetime_np3o2(n_eff : float, temperature: float = 0):
+    """
+    Compute the lifetime of a rydberg level |np3/2> at a finite temperature. If
+    temperature is not specified lifetime is taken to be at 0K.
+    Args:
+        n_eff : Effective principle quantum number of the rydberg level. Can
+            be computed as  $n - quantum_defect(n,l,j)$
+        temperature : temperature of the environment of the atom in Kelvin (K).
+            default is 0 K
+
+    Returns:
+        Excited state lifetime of a rydberg level
+    """
+    T_at_T0 = Ts_p_3o2 * n_eff ** delta_p_3o2
+    if temperature == 0:
+        return T_at_T0 * 1e-9
+    else:
+        exp_arg = 315780 * B_t / (temperature * n_eff ** C_t)
+    return 1e-9/(1/T_at_T0 + A_t * 21.4 / (n_eff**D_t * (np.exp(exp_arg) - 1)))
+
+
+# Quantum defects
+# -- for |nP3/2> --
+delta0_p_3o2 = 3.55907  # from Merkt 2016
+delta2_p_3o2 = 0.375  # from Merk 2016
+def defect_p_3o2(n: int) -> float:
+    """
+    Computes the quantum defect for a rydberg level in Cesium |nP3/2>. Uses
+    defect values from Merkt 2016.
+    Args:
+        n : principle quantum number of rydberg level
+
+    Returns:
+        delta : quantum defect of that level taken to the next-to-highest order term
+    """
+    return delta0_p_3o2 + delta2_p_3o2 / (n - delta0_p_3o2) ** 2
+
 
 def hf_splittings(
         a: float,
