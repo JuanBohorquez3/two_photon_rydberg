@@ -46,9 +46,7 @@ def dipole_rme_hf(
             |ap, jp,fp> (Cm).
             Equivalent to <ap, jp, fp|| er ||a, j, f>
     """
-    return N(
-        (-1)**(1+i+jp+fp)*np.sqrt((2*f+1)*(2*fp+1))*wigner_6j(f, 1, fp, jp, i, j)*d_fs
-    )
+    return (-1)**(1+i+jp+fp)*np.sqrt((2*f+1)*(2*fp+1))*N(wigner_6j(f, 1, fp, jp, i, j))*d_fs
 
 
 def dipole_rme_fs(
@@ -78,9 +76,7 @@ def dipole_rme_fs(
         d_fs : reduced matrix elements between the fine structure level |a, li, j> and
         |ap, lp, jp> (Cm). Equivalent to <ap, lp, jp|| er ||a, li, j>.
     """
-    return N(
-        (-1) ** (1+j+lp+s) * np.sqrt((2*j+1)*(2*jp+1)) * wigner_6j(li, s, j, jp, 1, lp) * d_l
-    )
+    return (-1) ** (1+j+lp+s) * np.sqrt((2*j+1)*(2*jp+1)) * N(wigner_6j(li, s, j, jp, 1, lp)) * d_l
 
 
 def quadrupole_rme_hf(
@@ -112,9 +108,7 @@ def quadrupole_rme_hf(
             |ap, jp,fp> (Cm).
             Equivalent to <ap, jp, fp|| er ||a, j, f>
     """
-    return N(
-        (-1)**(f+jp+i+2)*np.sqrt((2 * f + 1)*(2 * fp + 1))*wigner_6j(j, i, f, fp, 2, jp)*q_fs
-    )
+    return (-1)**(f+jp+i+2)*np.sqrt((2 * f + 1)*(2 * fp + 1))*N(wigner_6j(j, i, f, fp, 2, jp))*q_fs
 
 
 def quadrupole_rme_fs(
@@ -146,9 +140,7 @@ def quadrupole_rme_fs(
         q_fs : reduced matrix elements between the fine structure level |a, li, j> and
         |ap, lp, jp> (Cm). Equivalent to <ap, lp, jp|| er ||a, li, j>.
     """
-    return N(
-        (-1)**(j+lp+s+2)*np.sqrt((2 * j + 1)*(2 * jp + 1))*wigner_6j(li, s, j, jp, 2, lp)*q_l
-    )
+    return (-1)**(j+lp+s+2)*np.sqrt((2 * j + 1)*(2 * jp + 1))*N(wigner_6j(li, s, j, jp, 2, lp))*q_l
 
 
 def dipole_rabi_frequency(
@@ -199,10 +191,8 @@ def dipole_rabi_frequency(
     # proportion of field in that polarization state
     c_a = q[int(q_a)]
     # print(f"m-mp:{q_a},polarization_array:{q},c_a:{c_a}")
-    return N(
-        electric_field / hb * c_a * clebsch_gordan(1, j, jp, q_a, m, mp) * d_rme / np.sqrt(2 * jp
-                                                                                          + 1)
-    )
+    return electric_field / hb * c_a * N(clebsch_gordan(1, j, jp, q_a, m, mp)) * d_rme / \
+           np.sqrt(2 * jp + 1)
 
 
 def quadrupole_rabi_frequency(
@@ -243,7 +233,7 @@ def quadrupole_rabi_frequency(
         ret = 0
         for moo in range(-1, 2):  # supposed to be $\mu$
             for nuu in range(-1, 2):  # supposed to be $\nu$
-                ret += clebsch_gordan(1, 1, 2, moo, nuu, -q)*ks[moo]*qs[nuu]
+                ret += N(clebsch_gordan(1, 1, 2, moo, nuu, -q))*ks[moo]*qs[nuu]
         return (-1)**q * np.sqrt(10) * ret
     pre = 1j * k_mag(frequency*2*pi) * electric_field * q_rme / (hb * np.sqrt(2 * jp + 1))
     # print(pre)
@@ -251,8 +241,8 @@ def quadrupole_rabi_frequency(
     # print(f"f = {frequency*1e-12}THz")
     # print(f"k = {k_mag(frequency*2*pi)}m^-1")
 
-    m_sum = sum([m_q(q_ar, k_ar, q)*clebsch_gordan(2, j, jp, q, m, mp) for q in range(-2, 3)])
-    return complex(N(pre * m_sum))
+    m_sum = sum([m_q(q_ar, k_ar, q)*N(clebsch_gordan(2, j, jp, q, m, mp)) for q in range(-2, 3)])
+    return complex(pre * m_sum)
 
 
 def dipole_hf_to_fs(
@@ -313,4 +303,4 @@ def dipole_hf_to_fs(
             # if(q_ar[q] != 0):
                 # print(f"fr = {fp} mfr = {mfp} c1 = {c1} c2 = {c2}")
             s += cont
-    return complex(N(electric_field * s * np.sqrt(2 * f + 1) * d_rme / hb))
+    return electric_field * N(s) * np.sqrt(2 * f + 1) * d_rme / hb
