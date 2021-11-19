@@ -147,3 +147,6 @@ static
 /testing.ipynb
 
 *.png
+*.npy
+
+/Plots/Ellipticities Plots.rar
