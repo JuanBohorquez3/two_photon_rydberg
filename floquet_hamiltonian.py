@@ -373,6 +373,7 @@ def floquet_loop(
         theta: float,
         n_max: int,
         varied: Tuple[str, np.ndarray] = None,
+        energy_bands: bool = False,
         **kwargs
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
@@ -403,6 +404,8 @@ def floquet_loop(
             be one of the following ["Edc", "Eac", "ellipticity", "theta"]. values must be 1D array
             of floats. This likely will only work if values start from a small (preferably 0) value
             and make their way up to the maximal value.
+        energy_bands : If true, sort bands within a fine structure level (eg |52P3/2;-1>) by energy,
+            otherwise bands are sorted by m_j
     Returns:
         energies, eigenvectors: ndarrays containing the values of the system's energies and
             eigenvectors at each value of varied[1]
@@ -427,7 +430,12 @@ def floquet_loop(
 
     dipoles_z = dipoles(basis, qs=[1, 0, 0])
     if varied[0] != "ellipticity":
-        dipoles_ac = dipoles(basis, qs=[np.sqrt(1-ellipticity), np.sqrt(ellipticity), 0])
+        # dipoles_ac = dipoles(basis, qs=[np.sqrt(1-ellipticity), np.sqrt(ellipticity), 0])
+        dipoles_ac = dipoles(basis, qs=[
+            np.sqrt(1-ellipticity),
+            -np.sqrt(ellipticity)/np.sqrt(2),
+            -np.sqrt(ellipticity)/np.sqrt(2)
+        ])
     else:
         dipoles_ac = None
     for i, ival in enumerate(varied[1]):
@@ -468,7 +476,7 @@ def floquet_loop(
             ips_levels = np.dot(ips, ips_summer)
             # sum over all level in each fourier sub basis
             used_inds = []
-            troublesome_level = RydStateFS(51,2,5/2)
+            troublesome_level = RydStateFS(51, 2, 5/2)
             for j, level in enumerate(levels):
                 for k, n in enumerate(range(-n_max, n_max+1)):
                     print(f"finding good eigenvectors for |level, n> = |{level.ket()},{n}>")
@@ -482,38 +490,53 @@ def floquet_loop(
                         print(f"expansion required, threshold reduced to {thrsh}")
                         inds_l = np.argwhere(ips_levels[:, j + k * len(levels)] > thrsh)
 
-                    # find the band that has the greatest overlap with each mj level
-                    strt = starts[j]+k*len(basis)
-                    for a in range(int(2*level.j + 1)):
-                        # print(f"m = {-level.j + a}")
-                        # print(f"sub_ips = {ips[inds_l, strt + a]}")
-                        ev_ind = np.argmax(ips[inds_l, strt + a])
-                        if inds_l[ev_ind, 0] in used_inds:
-                            print(f"WARNING: index {inds_l[ev_ind, 0]} has been used")
-                        used_inds.append(inds_l[ev_ind, 0])
-                        # print(f"new inds = {inds_l[ev_ind,0]}")
-                        # print(f"New energy = {eigenvalues[inds_l[ev_ind, 0]]}")
-                        eigenstates[strt + a, :, 0] = eigenvectors[inds_l[ev_ind, 0], :]
-                        energies[strt + a, 0] = np.real(eigenvalues[inds_l[ev_ind, 0]])
-                    # now check if there are too many states that passed threshold, if so,
-                    # choose only the states with the greatest overlap
-                    # if len(inds_l) > 2*level.j+1:
-                    #     ovlps = np.argsort(ips_levels[inds_l, j + k * len(levels)],axis=0)[::-1]
-                    #     print(ovlps)
-                    #     print(int(2*level.j+1))
-                    #     inds_l = inds_l[ovlps[:int(2*level.j+1), 0]]
-                    # # sort the eigenvectors by energy level
-                    # nrgs = np.argsort(np.real(eigenvalues)[inds_l], 0)
-                    # for index in inds_l:
-                    #     if index in used_inds:
-                    #         print(f"WARNING: Index {index} has already been used")
-                    # used_inds.extend(inds_l)
-                    # # Map those energies to the zeeman states within the level
-                    # strt = starts[j]+k*len(basis)
-                    # stp = starts[j+1]+k*len(basis)
-                    # for ind, eind in zip(range(strt, stp), nrgs):
-                    #     eigenstates[ind, :, 0] = eigenvectors[inds_l[eind][0][0], :]
-                    #     energies[ind, 0] = eigenvalues[inds_l[eind][0][0]]
+                    if energy_bands:
+                        # now check if there are too many states that passed threshold, if so,
+                        # choose only the states with the greatest overlap
+                        if len(inds_l) > 2*level.j+1:
+                            ovlps = np.argsort(ips_levels[inds_l, j + k * len(levels)],axis=0)[::-1]
+                            print(ovlps)
+                            print(int(2*level.j+1))
+                            inds_l = inds_l[ovlps[:int(2*level.j+1), 0]]
+                        # sort the eigenvectors by energy level
+                        nrgs = np.argsort(np.real(eigenvalues)[inds_l], 0)
+                        for index in inds_l:
+                            if index in used_inds:
+                                print(f"WARNING: Index {index} has already been used")
+                        used_inds.extend(inds_l)
+                        # Map those energies to the zeeman states within the level
+                        strt = starts[j]+k*len(basis)
+                        stp = starts[j+1]+k*len(basis)
+                        for ind, eind in zip(range(strt, stp), nrgs):
+                            eigenstates[ind, :, 0] = eigenvectors[inds_l[eind][0][0], :]
+                            energies[ind, 0] = eigenvalues[inds_l[eind][0][0]]
+                    else:
+                        # find the band that has the greatest overlap with each mj level
+                        strt = starts[j]+k*len(basis)
+                        for a in range(int(2*level.j + 1)):
+                            # print(f"m = {-level.j + a}")
+                            # print(f"sub_ips = {ips[inds_l, strt + a]}")
+                            ev_ind = np.argmax(ips[inds_l, strt + a])
+                            if inds_l[ev_ind, 0] in used_inds:
+                                print(f"WARNING: index {inds_l[ev_ind, 0]} has been used")
+                            print(f"energy = "
+                                  f"{eigenvalues[inds_l[ev_ind,0]]*1e-9/(2*pi)}GHz")
+                            ev_list = eigenvectors[inds_l[ev_ind,0], :]
+                            # ev_list[np.argwhere(np.abs(ev_list)**2 < 1e-2)] = np.NaN
+                            ev_str = ""
+                            for jj, m in enumerate(range(-n_max,n_max+1)):
+                                for ii, state in enumerate(basis):
+                                    mind = ii + jj*len(basis)
+                                    if np.abs(ev_list[mind])**2 < 1e-2:
+                                        continue
+                                    st_ket = state.ket()[:-1] + f";{m}>"
+                                    ev_str += f"({abs(ev_list[mind])**2:.2f})^1/2{st_ket} + "
+                            print("eigenstate: \n" + ev_str[:-2])
+                            used_inds.append(inds_l[ev_ind, 0])
+                            # print(f"new inds = {inds_l[ev_ind,0]}")
+                            # print(f"New energy = {eigenvalues[inds_l[ev_ind, 0]]}")
+                            eigenstates[strt + a, :, 0] = eigenvectors[inds_l[ev_ind, 0], :]
+                            energies[strt + a, 0] = np.real(eigenvalues[inds_l[ev_ind, 0]])
         else:
             # try doing this the easy way. Find all overlaps of the computed eigenstates with the
             # previous iteration's eigenstates. For each eigenstate find the previous eigenstate
@@ -558,6 +581,149 @@ def floquet_loop(
                     # raise RuntimeError(
                       #   f"Failed to represent all basis states\ncut\n{inds_l}\ncut\n{ips_levels}")
         print(f"re-arrangement done after time {time()-t_start}s")
+
+    return energies, eigenstates
+
+def floquet_loop2(
+        basis: List[RydStateFS],
+        H0: np.ndarray,
+        Eac: float,
+        ellipticity: float,
+        field_omega: float,
+        Edc: float,
+        theta: float,
+        n_max: int,
+        varied: Tuple[str, np.ndarray] = None,
+        energy_bands: bool = False,
+        **kwargs
+) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    produces, then diagonalizes a floquet hamiltonian at a variety of different system parameters.
+
+    independent variable is defined in parameter varied, it overwrites the value of the steady state
+
+    eigenvectors and eigenvalues are organized into a large ndarray that allows the user to track
+    eigenvalues as bands in the resulting floquet spectrum as the independent variable is varied.
+    This is done by having the eigenvalues at each value of the independent variable be lined up
+    to maximize the overlap of each indexed eigenvector with the eigenvector for the previous
+    independent variable value.
+
+    Args:
+        basis : List of undressed atomic states to consider when creating the floquet hamiltonian
+        H0 : Hamiltonian describing unperturbed atomic system. Expected to be diagonal, indexing
+            should be the same as that of basis. Matrix elements should be reported in radial
+            frequency (radians/s)
+        Eac : Peak Electric field strength of the dressing field at the atoms (V/m)
+        ellipticity : ellipticity of the dressing field at the atoms. Field polarization is
+            described as: e_ac = sqrt(1-ellipticity)e_pi + sqrt(ellipticity)e_+
+        field_omega : oscillation frequency of the dressing field in radial frequency. (radians/s)
+        Edc : Electric field strength of the DC field at the atoms (V/m)
+        theta : angle between the DC electric field and the quantization axis (radians)
+        n_max : maximum number of fourier components of the dressing field to consider in the
+            creation of the Floquet hamiltonian
+        varied : (name of independent variable, values taken by independent variable), name must
+            be one of the following ["Edc", "Eac", "ellipticity", "theta"]. values must be 1D array
+            of floats. This likely will only work if values start from a small (preferably 0) value
+            and make their way up to the maximal value.
+        energy_bands : If true, sort bands within a fine structure level (eg |52P3/2;-1>) by energy,
+            otherwise bands are sorted by m_j
+    Returns:
+        energies, eigenvectors: ndarrays containing the values of the system's energies and
+            eigenvectors at each value of varied[1]
+            energies.shape = ( (2*n_max+1)len(basis), len(varied[1] )
+            eigenvectors.shape = ( (2*n_max+1)len(basis), (2*n_max+1)len(basis), len(varied[1] )
+    """
+    if type(varied[0]) is not str:
+        raise TypeError(
+            "first entry in varied parameter must be a string indicating which system parameter "
+            "is an independent variable")
+
+    flen = len(basis)*(2*n_max+1)
+    print(flen)
+    energies = np.ones((flen, len(varied[1])), dtype=float)
+    eigenstates = np.zeros((flen, flen, len(varied[1])), dtype=complex)
+
+    levels = implied_levels(basis)
+    print("Levels :\n")
+    basis_print(levels)
+    starts = level_starts(levels)
+    ips_summer = level_projector(basis, levels, n_max)
+
+    dipoles_z = dipoles(basis, qs=[1, 0, 0])
+    if varied[0] != "ellipticity":
+        # dipoles_ac = dipoles(basis, qs=[np.sqrt(1-ellipticity), np.sqrt(ellipticity), 0])
+        dipoles_ac = dipoles(basis, qs=[
+            np.sqrt(1-ellipticity),
+            -np.sqrt(ellipticity)/np.sqrt(2),
+            -np.sqrt(ellipticity)/np.sqrt(2)
+        ])
+    else:
+        dipoles_ac = None
+    for i, ival in enumerate(varied[1]):
+        if varied[0] == "Edc":
+            Edc = ival
+        elif varied[0] == "Eac":
+            Eac = ival
+        elif varied[0] == "ellipticity":
+            ellipticity = ival
+        elif varied[0] == "theta":
+            theta = ival
+        else:
+            raise ValueError(f"independent variable {varied[0]} not recognized")
+
+        t_start = time()
+        eigenvalues, eigenvectors = floquet_diag(
+            basis,
+            H0,
+            Eac,
+            ellipticity,
+            field_omega,
+            Edc,
+            theta,
+            n_max,
+            **{"dipoles_z": dipoles_z, "dipoles_ac": dipoles_ac}
+        )
+
+        print(f"floquet_diag call completed in {time()-t_start}s")
+        print(f"Diagonalization complete for independent variable entry, value {i}, {ival}")
+
+        # re-arrange eigenvalues and eigenvectors
+        t_start = time()
+        # first entry is special
+        if i == 0:
+            # compute overlaps wrt unperturbed eigenstates
+            ips = np.abs(eigenvectors)**2
+        else:
+            ips = np.abs(np.dot(np.conj(eigenvectors), eigenstates[..., i - 1].T)) ** 2
+
+        inds = np.argwhere(ips > 0.5)
+        check0 = all([a in inds[:, 0] for a in range(flen)])
+        check1 = all([a in inds[:, 1] for a in range(flen)])
+        ts = time()
+        if not (check0 and check1):
+            missinds = [a for a in range(flen) if a not in inds[:, 1]]
+            for j in missinds:
+                kinds = [np.argsort(-ips[:, j])][0]
+                # print(ips[:,j][kinds])
+                # print(kinds[0])
+                count = 0
+                while True:
+                    k = kinds[count]
+                    if k in inds[:, 0]:
+                        count += 1
+                    else:
+                        # print(inds)
+                        inds = np.append(inds, [[k, j]], axis=0)
+                        # print(inds)
+                        break
+        te = time()
+        print(f"re-arrange time = {te - ts}")
+        eigenstates[inds[:, 1], :, i] = eigenvectors[inds[:, 0], :]
+        energies[inds[:, 1], i] = eigenvalues[inds[:, 0]]
+        check0 = all([a in inds[:, 0] for a in range(flen)])
+        check1 = all([a in inds[:, 1] for a in range(flen)])
+        if not (check0 and check1):
+            raise RuntimeError("Oopsy woopsy")
 
     return energies, eigenstates
 
