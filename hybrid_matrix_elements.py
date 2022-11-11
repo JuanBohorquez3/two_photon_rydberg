@@ -12,7 +12,7 @@ scheme
 
 
 # constants and derived functions
-q_rad_int = 37.5*ao**2
+q_rad_int = 37.5*ao**2  # radial integral for quadrupole matrix elements (see Mark's Notes)
 
 
 def d_rme_fs(n):
