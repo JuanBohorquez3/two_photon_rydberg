@@ -39,9 +39,7 @@ DHF = hf_splittings(
 
 DHF[0] = 1j
 
-gamma_e = 125*1e3  # linewith/Decay rate of 5D_5/2 state (Hz)
-# gamma_e = 1e6
-
+gamma_e = gamma_5D
 
 # Compute rabi frequencies
 def q_rme_h(q_rad: float = q_rad_int) -> complex:

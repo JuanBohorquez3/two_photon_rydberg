@@ -19,7 +19,7 @@ gs = 2 + 2.31930443622e-3  # Corrected electron spin g-factor
 cs_clock = 9.192631770e9  # Cesium clock frequency (Hz)
 
 # Line-widths of relevant transitions in Cesium
-gamma_5D = 1/1280e-9  # for |5D5/2> levels
+gamma_5D = 124e3  # for |5D5/2> levels
 # -- Computing lifetime for rydberg atoms in |nP3/2> states  --
 Ts_p_3o2 = 3.2849  # From Entin 2009
 delta_p_3o2 = 2.9875  # From Entin 2009

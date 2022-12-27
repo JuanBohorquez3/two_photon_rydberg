@@ -109,7 +109,7 @@ def matrix_print(matrix: np.ndarray, mult: float = 1):
     """
     print(
         "\n".join([
-            "[" + ",".join([f"{me.real*mult:7.3f}" for me in row]) + "]" for row in matrix
+            "[" + ",".join([f"{me.real*mult:2.1f}" for me in row]) + "]" for row in matrix
         ]))
 
 

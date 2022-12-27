@@ -240,7 +240,7 @@ def quadrupole_rabi_frequency(
     # print(electric_field)
     # print(f"f = {frequency*1e-12}THz")
     # print(f"k = {k_mag(frequency*2*pi)}m^-1")
-
+    # print([f"m_{q}={m_q(q_ar,k_ar,q)}" for q in [-2,-1,0,1,2]])
     m_sum = sum([m_q(q_ar, k_ar, q)*N(clebsch_gordan(2, j, jp, q, m, mp)) for q in range(-2, 3)])
     return complex(pre * m_sum)
 

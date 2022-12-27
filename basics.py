@@ -20,7 +20,7 @@ mu = 1/(c**2*eps)  # Vacuum Permeability; N/A^2
 mub = 9.274009994e-24  # Bohr Magneton; J/T
 Eh = 4.359744650e-18  # Hartree; J
 kb = 1.38064852e-23  # Boltzmann Constant; J/K
-
+mcs = 2.20695e-25
 
 # Non-SI unit conversions
 # Format: non-SI unit = value in SI unit  # description of conversion; unit of SI equivalent
