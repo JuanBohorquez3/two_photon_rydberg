@@ -82,7 +82,7 @@ def q_rme_fs_h(q_rad: float) -> complex:
     )
 
 
-def q_rme_hf_h(q_rad: float, fp: moment) -> complex:
+def q_rme_hf_h(q_rad: float, fp: moment, fg: moment = 4) -> complex:
     """
     Computes reduced matrix element for the quadrupole transition between the |6S> -> |5D> states,
     given the value of the radial integral between those levels.
@@ -93,6 +93,7 @@ def q_rme_hf_h(q_rad: float, fp: moment) -> complex:
             Expected to be in SI units (m**2)
         fp: hyperfine structure angular momentum quantum number for excited state. Should be integer
             or half integer
+        fg : f quantum number of Hyperfine ground state. 3 or 4. Default is 4.
     Returns:
         q_rme : the reduced matrix element for the quadrupole transition in the hyperfine structure
             basis. In SI units (Cm**2)
@@ -100,7 +101,7 @@ def q_rme_hf_h(q_rad: float, fp: moment) -> complex:
     return quadrupole_rme_hf(
         q_rme_fs_h(q_rad),
         1 / 2,
-        4,
+        fg,
         5 / 2,
         fp,
         7 / 2
@@ -115,7 +116,8 @@ def q_rabi_frequency(
         q_rad: float,
         fp: moment,
         mp: moment,
-        phi: float = 0.0
+        phi: float = 0.0,
+        fg: int = 4
 ) -> complex:
     """
     Computes the Rabi frequency between the Cesium states |6S1/2;f=4,m=0> and |5D5/2;fp,mp> through
@@ -135,18 +137,19 @@ def q_rabi_frequency(
         mp: aziumthal angular momentum quantum number of the excited state. Should be integer or
             half-integer
         phi: phase of the electric field in radians. Default is 0.
+        fg : f quantum number of Hyperfine ground state. 3 or 4. Default is 4.
     Returns:
         Rabi frequency coupling the ground state to the given excited state. (Hz)
     """
     e_field = electric_field_strength(power, width) * np.exp(1j * phi)
-    rme = q_rme_hf_h(q_rad, fp)
+    rme = q_rme_hf_h(q_rad, fp, fg)
     return quadrupole_rabi_frequency(
         e_field,
         freq(684e-9),
         pol_ar,
         k_ar,
         rme,
-        4,
+        fg,
         0,
         fp,
         mp

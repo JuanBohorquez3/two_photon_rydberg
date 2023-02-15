@@ -2,7 +2,6 @@
 import numpy as np
 from typing import TypeVar
 from scipy.special import factorial
-import numpy as np
 
 from basics import *
 

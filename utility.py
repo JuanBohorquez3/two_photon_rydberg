@@ -55,9 +55,9 @@ class RydStateFS:
     def __eq__(self, other):
         return self.get_energy() == other.get_energy()
 
-    def ket(self):
+    def ket(self, bare=False):
         L_labels = {0: "S", 1: "P", 2: "D", 3: "F", 4: "G", 5: "H"}
-        if list(self.__qn.keys()) == ["n", "l", "j"]:
+        if list(self.__qn.keys()) == ["n", "l", "j"] or bare:
             return f"|{self.n},{L_labels[self.l]},{int(2*self.j)}/2>"
         else:
             extra_qn = {q_l: q_v for q_l, q_v in self.__qn.items() if q_l not in ["n","l","j"]}
