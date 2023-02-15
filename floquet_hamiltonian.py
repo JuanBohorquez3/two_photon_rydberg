@@ -241,7 +241,7 @@ def floquet_diag(
     Builds and diagonalizes the shirley-floquet Hamiltonian corresponding to a periodically driven
     system described by the arguments provided
 
-    System is an atom irradiated by an rf field (the dressing field) with frequency field_omega and
+    System is an atom irradiated by a rf field (the dressing field) with frequency field_omega and
     electric field
     strength Eac. The field can have a non-zero ellipticity provided by the ellipticity paramter.
     The field polarization is described as
@@ -375,7 +375,7 @@ def floquet_loop(
         varied: Tuple[str, np.ndarray] = None,
         energy_bands: bool = False,
         **kwargs
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> Tuple[np.ndarray, np.ndarray, Dict]:
     """
     produces, then diagonalizes a floquet hamiltonian at a variety of different system parameters.
 
@@ -472,6 +472,34 @@ def floquet_loop(
         if i == 0:
             # compute overlaps wrt unperturbed eigenstates
             ips = np.abs(eigenvectors)**2
+            if not energy_bands:
+                thrsh = 0.49
+                inds = np.argwhere(ips> thrsh)
+                missing_0 = np.array([i for i in range((2*n_max+1)*len(basis)) if i not in inds[:, 0]])
+                missing_1 = np.array([i for i in range((2*n_max+1)*len(basis)) if i not in inds[:, 1]])
+
+                for j, k in inds:
+                    eigenstates[k, :, 0] = eigenvectors[j, :]
+                    energies[k, 0] = np.real(eigenvalues[j])
+                if len(missing_0) > 0:
+                    popped = []
+                    print("rearranging missing indices")
+                    print(missing_0)
+                    print(missing_1)
+                    for ind in missing_0:
+                        print(f"missing ind {ind}")
+                        sub_ips = np.array([[i, ips[ind, i]] for i in range((2*n_max+1)*len(basis)) if ips[ind, i] > 1e-2]).T
+                        maxinds = np.argsort(sub_ips[1])
+                        for maxind in maxinds:
+                            labind = round(sub_ips[0,maxind])
+                            if labind in missing_1 and labind not in popped:
+                                break
+                        print(f"\t sub_ips = {sub_ips}\n\t maxind = {maxinds}\n\t labind = {labind}")
+                        popped += [labind]
+                        eigenstates[labind, :, 0] = eigenvectors[ind, :]
+                        energies[labind, 0] = np.real(eigenvalues[ind])
+                continue
+
             # sum over all zeeman states in each level
             ips_levels = np.dot(ips, ips_summer)
             # sum over all level in each fourier sub basis
@@ -489,7 +517,7 @@ def floquet_loop(
                         thrsh *= 0.95
                         print(f"expansion required, threshold reduced to {thrsh}")
                         inds_l = np.argwhere(ips_levels[:, j + k * len(levels)] > thrsh)
-
+                        print(inds_l)
                     if energy_bands:
                         # now check if there are too many states that passed threshold, if so,
                         # choose only the states with the greatest overlap
@@ -509,7 +537,7 @@ def floquet_loop(
                         stp = starts[j+1]+k*len(basis)
                         for ind, eind in zip(range(strt, stp), nrgs):
                             eigenstates[ind, :, 0] = eigenvectors[inds_l[eind][0][0], :]
-                            energies[ind, 0] = eigenvalues[inds_l[eind][0][0]]
+                            energies[ind, 0] = np.real(eigenvalues[inds_l[eind][0][0]])
                     else:
                         # find the band that has the greatest overlap with each mj level
                         strt = starts[j]+k*len(basis)
@@ -553,7 +581,7 @@ def floquet_loop(
                 #     eigenstates[ind[1], :, i] = eigenvectors[ind[0], :]
                 #     energies[ind[1], i] = eigenvalues[ind[0]]
                 eigenstates[inds[:, 1], :, i] = eigenvectors[inds[:, 0], :]
-                energies[inds[:, 1], i] = eigenvalues[inds[:, 0]]
+                energies[inds[:, 1], i] = np.real(eigenvalues[inds[:, 0]])
             else:
                 # if the easy way fails, we find the eigenvectors that maximize overlap with
                 # previous eigenvectors by first finding which levels have >50% population, then
@@ -577,12 +605,18 @@ def floquet_loop(
                         eigenstates[ind[1], :, i] = eigenvectors[ind[0], :]
                         energies[ind[1], i] = eigenvalues[ind[0]]
                 else:
-                    return energies, eigenstates, ips, inds, ips_levels, inds_l
+                    error = {
+                        "inner_products": ips,
+                        "ip_indeces": inds,
+                        "level_summed_inner_products": ips_levels,
+                        "level_summed_indeces": inds_l
+                    }
+                    return energies, eigenstates, error
                     # raise RuntimeError(
                       #   f"Failed to represent all basis states\ncut\n{inds_l}\ncut\n{ips_levels}")
         print(f"re-arrangement done after time {time()-t_start}s")
 
-    return energies, eigenstates
+    return energies, eigenstates, None
 
 def floquet_loop2(
         basis: List[RydStateFS],
